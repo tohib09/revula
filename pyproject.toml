@@ -1,0 +1,126 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "revula"
+version = "0.1.0"
+description = "Universal Reverse Engineering MCP Server — connects to Claude Desktop, VS Code, and custom tooling"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Revula Contributors" },
+]
+keywords = [
+    "reverse-engineering",
+    "mcp",
+    "model-context-protocol",
+    "malware-analysis",
+    "binary-analysis",
+    "debugging",
+    "disassembly",
+    "decompilation",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Disassemblers",
+    "Topic :: Software Development :: Debuggers",
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "capstone>=5.0.0",
+    "lief>=0.14.0",
+    "pefile>=2023.2.7",
+    "pyelftools>=0.30",
+    "yara-python>=4.3.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+    "tomllib-stubs>=0.1.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+frida = ["frida-tools>=12.0.0", "frida>=16.0.0"]
+angr = ["angr>=9.2.0"]
+r2 = ["r2pipe>=1.8.0"]
+crypto = ["python-tlsh>=4.5.0", "ppdeep>=1.1"]
+network = ["scapy>=2.5.0"]
+android = ["frida-tools>=12.0.0", "frida>=16.0.0", "androguard>=3.4.0a1"]
+flare = ["flare-floss>=3.0.0", "flare-capa>=7.0.0"]
+full = [
+    "revula[frida,angr,r2,crypto,network,android,flare]",
+    "uncompyle6>=3.9.0",
+]
+
+[project.scripts]
+revula = "revula.server:main"
+
+[project.entry-points."mcp.servers"]
+revula = "revula.server:app"
+
+[project.urls]
+Homepage = "https://github.com/revula/revula"
+Documentation = "https://github.com/revula/revula#readme"
+Repository = "https://github.com/revula/revula"
+Issues = "https://github.com/revula/revula/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/revula"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/revula", "README.md", "LICENSE"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # Pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez
+    "T20",  # flake8-print
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # Ruff-specific rules
+]
+ignore = [
+    "T201",   # Allow print for CLI output
+    "SIM102", # Allow nested if (sometimes clearer in RE tool logic)
+    "SIM103", # Allow explicit if/return bool
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["frida.*", "angr.*", "claripy.*", "triton.*", "lldb.*", "scapy.*", "r2pipe.*", "tlsh.*", "ssdeep.*", "ppdeep.*", "yara.*", "capstone.*", "pefile.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external tools",
+]
