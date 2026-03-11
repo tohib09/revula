@@ -1079,4 +1079,4 @@ python scripts/test/validate_install.py
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GNU — see [LICENSE](LICENSE).
