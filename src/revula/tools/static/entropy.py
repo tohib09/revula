@@ -124,8 +124,14 @@ def _analyze_sections_lief(file_path: str) -> list[dict[str, Any]]:
         elif entropy < 0.5 and len(content) > 256:
             status = "near_zero_entropy"
 
+        # sec.name may be str (newer LIEF) or bytes; handle both
+        sec_name = sec.name
+        if isinstance(sec_name, bytes):
+            sec_name = sec_name.strip(b"\x00").decode("utf-8", errors="replace")
+        elif isinstance(sec_name, str):
+            sec_name = sec_name.strip("\x00")
         section_info: dict[str, Any] = {
-            "name": sec.name.strip(b"\x00"),  # type: ignore[arg-type]
+            "name": sec_name,
             "virtual_address": sec.virtual_address if hasattr(sec, "virtual_address") else 0,
             "size": len(content),
             "entropy": round(entropy, 4),
