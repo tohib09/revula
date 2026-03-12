@@ -186,7 +186,7 @@ def _parse_with_lief(file_path: Path, data: bytes) -> dict[str, Any]:
 
     result: dict[str, Any] = {
         "format": "unknown",
-        "name": binary.name,  # type: ignore[attr-defined]
+        "name": getattr(binary, "name", str(file_path.name)),
         "entrypoint": binary.entrypoint if hasattr(binary, "entrypoint") else None,
     }
 
@@ -380,13 +380,14 @@ def _parse_elf_lief(binary: Any) -> dict[str, Any]:
     result["segments"] = segments
 
     # Dynamic entries / shared libraries
-    if binary.has_dynamic:
+    if hasattr(binary, "libraries"):
         libraries = list(binary.libraries)
         result["shared_libraries"] = libraries
 
-    # Symbols
+    # Symbols (symtab_symbols in LIEF >= 0.16, static_symbols in older)
     static_syms = []
-    for sym in binary.static_symbols:
+    symtab = getattr(binary, "symtab_symbols", None) or getattr(binary, "static_symbols", [])
+    for sym in symtab:
         if sym.name:
             static_syms.append({
                 "name": sym.name,
