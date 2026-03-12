@@ -1,3 +1,4 @@
+// Example MCP Server Configuration for Visual Studio Code
 {
   "servers": {
     "revula": {
