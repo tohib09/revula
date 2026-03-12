@@ -423,9 +423,50 @@ async def handle_triton_dse(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     ctx = TritonContext(ARCH.X86_64)
     ctx.setMode(MODE.ALIGNED_MEMORY, True)
 
-    # Load binary into Triton memory
+    # Parse ELF/PE with LIEF for proper segment loading
     base_addr = 0x400000
-    ctx.setConcreteMemoryAreaValue(base_addr, data)
+    entry_point = base_addr
+    try:
+        import lief
+        binary = lief.parse(str(file_path))
+        if binary is not None:
+            # Load segments at their virtual addresses
+            if hasattr(binary, 'segments'):
+                for seg in binary.segments:
+                    if seg.virtual_size > 0 and len(seg.content) > 0:
+                        ctx.setConcreteMemoryAreaValue(
+                            seg.virtual_address, bytes(seg.content)
+                        )
+            elif hasattr(binary, 'sections'):
+                for sec in binary.sections:
+                    if sec.virtual_size > 0 and len(sec.content) > 0:
+                        ctx.setConcreteMemoryAreaValue(
+                            sec.virtual_address, bytes(sec.content)
+                        )
+            # Get entry point from binary
+            if hasattr(binary, 'entrypoint') and binary.entrypoint:
+                entry_point = binary.entrypoint
+            # Detect architecture
+            if hasattr(binary, 'header'):
+                hdr = binary.header
+                if hasattr(hdr, 'machine_type'):
+                    mt = str(hdr.machine_type)
+                    if '386' in mt or 'I386' in mt:
+                        ctx = TritonContext(ARCH.X86)
+                        ctx.setMode(MODE.ALIGNED_MEMORY, True)
+                        # Reload segments for new context
+                        if hasattr(binary, 'segments'):
+                            for seg in binary.segments:
+                                if seg.virtual_size > 0 and len(seg.content) > 0:
+                                    ctx.setConcreteMemoryAreaValue(
+                                        seg.virtual_address, bytes(seg.content)
+                                    )
+        else:
+            # Fallback: load raw bytes
+            ctx.setConcreteMemoryAreaValue(base_addr, data)
+    except ImportError:
+        # No LIEF — load raw bytes at base address
+        ctx.setConcreteMemoryAreaValue(base_addr, data)
 
     # Set up symbolic memory regions
     for addr_str, size in symbolic_mem.items():
@@ -442,7 +483,7 @@ async def handle_triton_dse(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     if start_addr_str:
         pc = int(start_addr_str, 16) if start_addr_str.startswith("0x") else int(start_addr_str)
     else:
-        pc = base_addr
+        pc = entry_point
 
     target_addr = None
     if target_addr_str:
