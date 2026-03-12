@@ -343,9 +343,11 @@ async def handle_gdb_exploit_helpers(
         proc = await safe_subprocess(
             ["checksec", "--file", binary_path], timeout=30,
         )
+        # pwntools checksec outputs to stderr, not stdout
+        output = proc.stdout or proc.stderr or ""
         return text_result({
-            "output": proc.stdout[:4000],
-            "success": proc.success,
+            "output": output[:4000],
+            "success": proc.success or bool(output.strip()),
         })
 
     elif action in ("got_plt", "plt_got"):
