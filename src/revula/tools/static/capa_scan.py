@@ -71,6 +71,21 @@ async def handle_capa(arguments: dict[str, Any]) -> list[dict[str, Any]]:
         cmd.extend(["-f", fmt])
     if rules_path:
         cmd.extend(["-r", rules_path])
+    else:
+        # Auto-detect rules path — pip-installed capa often lacks embedded rules
+        from pathlib import Path as _Path
+
+        _rules_candidates = [
+            _Path.home() / ".local" / "share" / "capa" / "rules",
+            _Path.home() / ".capa" / "rules",
+            _Path("/usr/share/capa/rules"),
+            _Path("/opt/capa-rules"),
+        ]
+        for candidate in _rules_candidates:
+            if candidate.is_dir():
+                cmd.extend(["-r", str(candidate)])
+                logger.info("Auto-detected capa rules at %s", candidate)
+                break
 
     result = await safe_subprocess(
         cmd,
